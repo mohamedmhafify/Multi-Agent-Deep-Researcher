@@ -1,8 +1,12 @@
+import os
+from dotenv import load_dotenv
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.redis import RedisSaver
 from redis import Redis
 from state import ResearchState
 from agents import planner_node, researcher_node, writer_node, critic_node, critic_router
+
+load_dotenv()
 
 def build_graph():
     workflow = StateGraph(ResearchState)
@@ -18,8 +22,11 @@ def build_graph():
     workflow.add_edge("writer", "critic")
     workflow.add_conditional_edges("critic", critic_router)
 
-    # ربط الـ Checkpointer بـ Redis
-    redis_client = Redis(host="localhost", port=6379)
+    # Redis connection is env-driven so the app and docker-compose agree
+    redis_client = Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+    )
     checkpointer = RedisSaver(redis_client=redis_client)
     
     # ده علشان يبني indexes جوه الداتا بيز
@@ -31,4 +38,3 @@ def build_graph():
 
 # بنجهز الـ Agent عشان نستخدمه في أي مكان تاني
 research_agent = build_graph()
-print("✅ Graph is built and connected to Redis Memory!")

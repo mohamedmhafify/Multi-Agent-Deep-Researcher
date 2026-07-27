@@ -1,5 +1,22 @@
+# LangGraph's Redis checkpointer calls FT.* (RediSearch) commands to build its
+# indexes. Plain `redis:7` does not ship that module, so it must be Redis Stack.
+
 services:
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis/redis-stack:latest
+    container_name: redis-stack
     ports:
-      - "6379:6379"
+      - "6379:6379"   # Redis protocol — what the app connects to
+      - "8001:8001"   # RedisInsight browser UI
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      # Succeeds only when the search module is actually loaded
+      test: ["CMD-SHELL", "redis-cli FT._LIST || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis_data:
